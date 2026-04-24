@@ -44,6 +44,9 @@ const Nav: React.FC = () => {
             <Link to="/archive" className="px-3 py-1 rounded-full text-sm font-medium text-slate-300 hover:text-white transition-colors">
               The Archive
             </Link>
+            <Link to="/sacred-insights" className="px-3 py-1 rounded-full text-sm font-medium text-slate-300 hover:text-white transition-colors">
+              Sacred Insights
+            </Link>
             {uid && (
               <Link to="/dashboard" className="px-3 py-1 rounded-full text-sm font-medium text-slate-300 hover:text-white transition-colors">
                 Dashboard

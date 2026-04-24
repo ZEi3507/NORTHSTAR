@@ -9,6 +9,7 @@ import SubmitEntry from './pages/SubmitEntry';
 import ReviseEntry from './pages/ReviseEntry';
 import EntryDetail from './pages/EntryDetail';
 import VeilTest from './pages/VeilTest';
+import SacredInsights from './pages/SacredInsights';
 
 import AdminReview from './pages/AdminReview';
 import { RequireAdmin } from './components/RequireAdmin';
@@ -29,6 +30,7 @@ const App: React.FC = () => {
         <Route path="/dashboard" element={<ConductorDashboard />} />
         <Route path="/submit" element={<SubmitEntry />} />
         <Route path="/revise/:postId" element={<ReviseEntry />} />
+        <Route path="/sacred-insights" element={<SacredInsights />} />
         <Route path="/veil-test" element={<VeilTest />} />
 
         <Route

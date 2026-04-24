@@ -8,6 +8,10 @@ service cloud.firestore {
       allow update: if request.auth != null && (request.auth.uid == userId || request.auth.uid == 'SwbYjFnnW4Pu9o3GQDyfefxZsU42');
     }
 
+    match /sacred-insights/{insightId} {
+      allow read, write: if request.auth != null;
+    }
+
     match /archive/{postId} {
       allow read: if request.auth != null && (
         resource.data.status == 'approved' || 
