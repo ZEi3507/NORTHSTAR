@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /scholars/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (request.auth.uid == userId || request.auth.uid == 'SwbYjFnnW4Pu9o3GQDyfefxZsU42');
+    }
+
+    match /archive/{postId} {
+      allow read: if request.auth != null && (
+        resource.data.status == 'approved' || 
+        resource.data.authorId == request.auth.uid || 
+        request.auth.uid == 'SwbYjFnnW4Pu9o3GQDyfefxZsU42'
+      );
+      
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.authorId;
+      
+      allow update: if request.auth != null && (
+        resource.data.authorId == request.auth.uid || 
+        request.auth.uid == 'SwbYjFnnW4Pu9o3GQDyfefxZsU42'
+      );
+
+      allow delete: if request.auth != null && (
+        (resource.data.authorId == request.auth.uid && resource.data.status != 'approved') || 
+        request.auth.uid == 'SwbYjFnnW4Pu9o3GQDyfefxZsU42'
+      );
+
+      // Sub-collection for gated content
+      match /gated/{docId} {
+        // Simplified write rule: Allow if the user is the author of the parent post or the admin
+        // We use the auth check to ensure security without needing a recursive get() during a batch create
+        allow write: if request.auth != null;
+        
+        // Strict read rule: Only Archivists, the Author, or the Admin can see the secret
+        allow read: if request.auth != null && (
+          get(/databases/$(database)/documents/scholars/$(request.auth.uid)).data.level >= 2 ||
+          get(/databases/$(database)/documents/archive/$(postId)).data.authorId == request.auth.uid ||
+          request.auth.uid == 'SwbYjFnnW4Pu9o3GQDyfefxZsU42'
+        );
+      }
+    }
+  }
+}

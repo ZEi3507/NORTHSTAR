@@ -1,0 +1,31 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e18]:
+    - banner [ref=e19]:
+      - generic [ref=e20]:
+        - heading "Conductor Dashboard" [level=1] [ref=e21]
+        - generic [ref=e22]:
+          - generic [ref=e23]: "| Initiate |"
+          - generic [ref=e24]: Level 1
+      - generic [ref=e25]:
+        - link "New Entry" [ref=e26] [cursor=pointer]:
+          - /url: /submit
+        - button "Leave Sanctum" [ref=e27]
+    - main [ref=e28]:
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - heading "Current Standing" [level=2] [ref=e31]
+          - generic [ref=e32]:
+            - generic [ref=e33]:
+              - generic [ref=e34]: Approved Entries
+              - generic [ref=e35]: "0"
+            - generic [ref=e36]:
+              - generic [ref=e37]: Status
+              - generic [ref=e38]: Clear
+        - generic [ref=e39]:
+          - heading "Laboratory Logs" [level=2] [ref=e40]
+          - paragraph [ref=e41]: Loading logs...
+      - complementary [ref=e42]:
+        - generic [ref=e43]:
+          - heading "Harmony Tracker" [level=2] [ref=e44]
+          - paragraph [ref=e45]: V2.1 Extension Required
+  - paragraph [ref=e16]: Running in emulator mode. Do not use with production credentials.

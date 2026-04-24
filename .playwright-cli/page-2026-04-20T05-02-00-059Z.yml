@@ -1,0 +1,3 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]: FETCHING ENTRY...
+  - paragraph [ref=e5]: Running in emulator mode. Do not use with production credentials.

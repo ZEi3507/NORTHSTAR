@@ -1,0 +1,1143 @@
+Before you begin, read PRD.md and DESIGN.md in the current directory.
+Then execute the task below.
+
+# NorthStar V2.0 — Gemini CLI Prompt Suite
+## 9 Step-by-Step Prompts
+> Usage: Open a NEW Gemini CLI conversation for each step.
+> Complete the verification gate before opening the next session.
+> The PRD is your memory between sessions — not the chat.
+
+---
+
+# ════════════════════════════════════════════════════════════
+# STEP 1 — FOUNDATION
+#
+# ════════════════════════════════════════════════════════════
+
+```
+You are building NorthStar V2.0 — The Conduct Laboratory & Archive.
+A research platform where access to gated content is earned through contribution.
+
+STACK: React + TypeScript + Vite + Firebase (Auth, Firestore) + Zustand + Tailwind CSS.
+Do NOT use React Context for state management anywhere in this project. Use Zustand.
+
+YOUR TASK FOR THIS SESSION: Build the Foundation.
+This means: Firebase Auth setup + automatic Scholar document creation on first sign-up.
+
+─── WHAT TO BUILD ───────────────────────────────────────────────────────────────
+
+1. FIREBASE AUTH
+   - Email/password authentication only.
+   - On successful sign-up, automatically create a Scholar document in Firestore.
+
+2. FIRESTORE SCHOLAR DOCUMENT
+   Collection: /scholars/{userId}
+   Create this exact document on first sign-up:
+
+   {
+     displayName: string,          // from sign-up form
+     scholarGrade: "Initiate",     // always starts as Initiate
+     level: 1,                     // always starts at 1
+     postCount: 0,                 // approved entries only — starts at 0
+     approvedPostIds: [],          // empty array — grows on approval
+     pendingPostId: null,          // one pending entry at a time — starts null
+     conductStats: {
+       focusScore: null,           // STUB ONLY — no logic writes to this in V2.0
+       experimentsRun: null,       // STUB ONLY — no logic writes to this in V2.0
+     },
+     createdAt: serverTimestamp()
+   }
+
+3. ZUSTAND STORE — conductorStore
+   File: src/stores/conductorStore.ts
+
+   interface ConductorState {
+     uid: string | null
+     level: number
+     scholarGrade: 'Initiate' | 'Archivist'
+     postCount: number
+     approvedPostIds: string[]
+     pendingPostId: string | null
+     conductStats: { focusScore: null; experimentsRun: null }
+     isLoading: boolean
+     setConductor: (data: Partial<ConductorState>) => void
+     clearConductor: () => void
+   }
+
+   - Default state: uid null, level 1, scholarGrade 'Initiate', isLoading true
+   - setConductor: merges partial state
+   - clearConductor: resets all fields to defaults, isLoading false
+
+4. AUTH LISTENER
+   File: src/lib/authListener.ts
+   - onAuthStateChanged listener
+   - On sign-in: fetch /scholars/{uid} from Firestore → call setConductor() with result
+   - On sign-out: call clearConductor()
+   - Set isLoading: false after fetch completes regardless of outcome
+   - Mount this listener once at the app root (App.tsx or main.tsx)
+
+5. SIGN-UP FORM — basic UI
+   Route: /signup
+   Fields: Display Name, Email, Password
+   On submit:
+   - Create Firebase Auth user
+   - Create Scholar Firestore document (exact schema above)
+   - Redirect to /dashboard on success
+   Error handling: show inline error if email already in use.
+
+6. SIGN-IN FORM — basic UI
+   Route: /signin
+   Fields: Email, Password
+   On submit: Firebase signInWithEmailAndPassword
+   Redirect to /dashboard on success.
+
+─── RULES ───────────────────────────────────────────────────────────────────────
+
+- NEVER use React Context. Zustand only.
+- NEVER let the client write to `level` or `scholarGrade` directly.
+  These fields are written only by server functions (future steps).
+  The only client write to /scholars is the initial document creation on sign-up.
+- conductStats fields are null stubs. Do not write any logic that touches them.
+- All TypeScript — no .js files.
+
+─── VERIFICATION GATE (complete before closing this session) ────────────────────
+
+Test the following manually before marking this step done:
+
+1. Sign up with a new email.
+2. Open Firestore console and confirm /scholars/{uid} exists with:
+   level: 1, scholarGrade: "Initiate", postCount: 0,
+   approvedPostIds: [], pendingPostId: null,
+   conductStats: { focusScore: null, experimentsRun: null }
+3. Sign out. Sign in again. Confirm conductorStore repopulates correctly
+   (add a console.log in the auth listener to verify).
+4. Confirm isLoading transitions from true → false after auth resolves.
+```
+
+---
+
+# ════════════════════════════════════════════════════════════
+# STEP 2 — THE VEIL
+#
+# ════════════════════════════════════════════════════════════
+
+```
+You are building NorthStar V2.0 — The Conduct Laboratory & Archive.
+Foundation (Firebase Auth + Scholar documents + conductorStore) is already built.
+
+STACK: React + TypeScript + Firebase + Zustand + Tailwind CSS.
+
+YOUR TASK FOR THIS SESSION: Build The Veil — the redaction UI component.
+
+─── CONTEXT ─────────────────────────────────────────────────────────────────────
+
+NorthStar gates certain content behind Scholar Level 2 (Archivist).
+Level 1 Scholars (Initiates) see black redaction bars with a CTA.
+Level 2 Scholars (Archivists) see the actual content with a fade-in animation.
+
+CRITICAL SECURITY RULE: The Veil is a UI component only.
+It must NEVER receive the redacted text when the Scholar is Level 1.
+The server never sends redactedContent to Level 1 users (enforced in a later step).
+This component's job is to RENDER what it receives — not to hide text that's in the DOM.
+Do NOT build this as a CSS blur or visibility:hidden over real text.
+If userLevel < 2, the children prop will be undefined or an empty string — render the bar.
+If userLevel >= 2, the children prop contains the text — render it with the reveal animation.
+
+─── WHAT TO BUILD ───────────────────────────────────────────────────────────────
+
+1. COMPONENT: TheVeil.tsx
+   File: src/components/TheVeil.tsx
+
+   Props:
+   - children: string | undefined
+   - userLevel: number
+
+   Behavior:
+   - If userLevel < 2 OR children is undefined/empty:
+     Render a black redaction bar (█ characters, length capped at 40)
+     Below the bar, render a CTA: "Publish an entry to reveal"
+   - If userLevel >= 2 AND children has content:
+     Render the children text with the veilReveal animation (400ms ease-in-out)
+
+2. CSS — use these exact class names and tokens:
+
+   --color-redaction: #000000
+   --color-redaction-glow: rgba(196, 151, 58, 0.35)   /* dark mode only */
+
+   .veil-wrapper       — display: inline; position: relative
+   .veil-bar           — inline-flex, column direction, gap: 4px,
+                         cursor: not-allowed, user-select: none
+   .veil-bar text      — background #000, color transparent, border-radius 2px,
+                         font-family monospace
+   [data-theme="dark"] .veil-bar — box-shadow: 0 0 8px rgba(196,151,58,0.35)
+   .veil-cta           — font Inter, 12px, font-weight 500,
+                         letter-spacing 0.08em, text-transform uppercase,
+                         color var(--color-accent) which is #1E3A5F light / #C4973A dark,
+                         border-bottom 1px solid transparent,
+                         on hover: border-bottom-color currentColor,
+                         transition 150ms ease
+   .veil-revealed      — animation: veilReveal 400ms ease-in-out forwards
+   @keyframes veilReveal — from: opacity 0, blur(4px) → to: opacity 1, blur(0)
+
+3. DESIGN TOKENS — add to globals.css if not present:
+   --color-redaction: #000000
+   --color-redaction-glow: rgba(196, 151, 58, 0.35)
+   Font stack:
+   @import Google Fonts: Cormorant Garamond (300,400,500,600 + italic),
+   EB Garamond (400,500,600 + italic), Inter (300,400,500,600)
+   --font-display: 'Cormorant Garamond', Georgia, serif
+   --font-heading: 'EB Garamond', Georgia, serif
+   --font-body: 'Inter', system-ui, sans-serif
+   --color-accent: #1E3A5F  (light mode)
+   [data-theme="dark"] --color-accent: #C4973A
+
+4. DEMO PAGE — for verification only, delete after this step
+   Route: /veil-test
+   Render TheVeil four times:
+   - userLevel=1, children="This is a secret insight about the nature of focus."
+   - userLevel=1, children=undefined
+   - userLevel=2, children="This is a secret insight about the nature of focus."
+   - userLevel=2, children=""
+   Add a toggle button that switches userLevel between 1 and 2 to test the animation.
+
+─── RULES ───────────────────────────────────────────────────────────────────────
+
+- TheVeil receives text only if the server sends it. Level 1 = no text sent.
+  The component must work correctly with undefined/empty children.
+- No blur filter over real text. No visibility:hidden. No opacity:0.
+  The text must not exist in the DOM at all for Level 1.
+- border-radius on all elements: 2px maximum. No rounded-lg, no rounded-full.
+- No box-shadow on anything except the dark mode veil glow.
+- No scale transforms. Card hover = translateY(-1px) only (not relevant here, but establish the rule).
+- All transitions: 150ms for UI interactions, 400ms for the veil reveal only.
+  Nothing above 400ms.
+
+─── VERIFICATION GATE ───────────────────────────────────────────────────────────
+
+1. Open /veil-test with userLevel=1.
+   Confirm: black bar visible, CTA "PUBLISH AN ENTRY TO REVEAL" visible.
+   Open DevTools → Elements tab.
+   Confirm: the secret text string does NOT appear anywhere in the DOM.
+
+2. Click toggle to userLevel=2.
+   Confirm: text appears with a smooth fade-in (not instant, not jarring).
+   Animation should feel like a document being declassified — 400ms, slight blur lift.
+
+3. Toggle dark mode (add data-theme="dark" to <html> temporarily).
+   Confirm: gold glow appears on the redaction bar edges.
+   Confirm: CTA color shifts to #C4973A (Aged Gold).
+
+4. Test with children=undefined and children="". Both must render the bar, not crash.
+```
+
+---
+
+# ════════════════════════════════════════════════════════════
+# STEP 3 — THE EXPERIMENT BUILDER
+# 
+# ════════════════════════════════════════════════════════════
+
+```
+You are building NorthStar V2.0 — The Conduct Laboratory & Archive.
+Steps 1 (Foundation) and 2 (The Veil component) are already complete.
+
+STACK: React + TypeScript + Firebase (Auth, Firestore) + Zustand + Tailwind.
+
+YOUR TASK FOR THIS SESSION: Build The Experiment Builder — the entry submission editor.
+
+─── CONTEXT ─────────────────────────────────────────────────────────────────────
+
+Scholars submit two types of entries to the Archive:
+- "research": Free-form scholarly writing. No enforced structure.
+- "protocol": Structured laboratory format. Three sections: Hypothesis, Protocol, Observation.
+
+Both types use the [redact]...[/redact] tag system to mark gated content.
+Both enforce a 150-word minimum before submission is allowed.
+A Scholar can only have ONE entry in PENDING state at a time.
+
+─── WHAT TO BUILD ───────────────────────────────────────────────────────────────
+
+1. PARSER UTILITY
+   File: src/lib/parsePostContent.ts
+
+   export interface ParsedEntry {
+     publicContent: string    // full text with [REDACTED] placeholder where tags were
+     redactedContent: string  // extracted segments joined by \n---\n
+     wordCount: number        // computed on FULL raw content including redacted text
+   }
+
+   export function parsePostContent(rawContent: string): ParsedEntry {
+     - Find all [redact]...[/redact] blocks
+     - Extract inner content into segments array
+     - Replace each block in the original string with the literal text "[REDACTED]"
+     - Join segments with "\n---\n" for redactedContent
+     - Word count: strip the [redact] and [/redact] tags from rawContent,
+       then split on whitespace and count non-empty tokens
+     - Return { publicContent, redactedContent, wordCount }
+   }
+
+   Edge cases to handle:
+   - Multiple [redact] blocks in one entry ✓
+   - Nested content with line breaks inside [redact] blocks ✓
+   - No [redact] tags at all → redactedContent is empty string, publicContent is full text ✓
+   - Only [redact] content, no public text → publicContent is "[REDACTED]" ✓
+
+2. SUBMISSION VALIDATOR
+   File: src/lib/validateEntry.ts
+
+   const MIN_WORD_COUNT = 150
+
+   export function validateEntry(parsed: ParsedEntry): string | null {
+     - If wordCount < 150: return error string:
+       "Entries must be at least 150 words. Yours is currently {wordCount}."
+     - Otherwise: return null (valid)
+   }
+
+3. EDITOR COMPONENT — THE EXPERIMENT BUILDER
+   Route: /submit
+   File: src/pages/SubmitEntry.tsx
+
+   PART A — TYPE SELECTOR
+   Two options displayed as toggle/tab: "Research Entry" | "Conduct Protocol"
+   Default: "Research Entry"
+   Selecting a type loads the appropriate editor below.
+
+   PART B — RESEARCH ENTRY EDITOR (type: "research")
+   Fields:
+   - Title (text input, required)
+   - Content (large textarea)
+   - [redact] helper: a small toolbar button labelled "[ REDACT ]" that
+     wraps selected text in [redact]...[/redact] tags on click.
+   - Live word count display: "247 words" — updates as Scholar types.
+     Word count uses parsePostContent() so it includes redacted text in the count.
+   - Submit button: disabled and labelled "150 words minimum" if count < 150.
+     Disabled and labelled "Entry awaiting review" if pendingPostId !== null
+     (read from conductorStore).
+     Active and labelled "Submit for Review" otherwise.
+
+   PART C — CONDUCT PROTOCOL EDITOR (type: "protocol")
+   Three labeled sections rendered as separate textareas:
+
+   Section 1 — HYPOTHESIS
+   Label: "HYPOTHESIS"
+   Sublabel: "What do I expect to happen or discover?"
+   Textarea: free text. No [redact] wrapping by default.
+
+   Section 2 — PROTOCOL
+   Label: "PROTOCOL"
+   Sublabel: "What exact steps will I follow?"
+   Textarea: free text. No [redact] wrapping by default.
+
+   Section 3 — OBSERVATION
+   Label: "OBSERVATION"
+   Sublabel: "What actually happened? What did I learn?"
+   Textarea: pre-populated with [redact] and [/redact] tags framing the text area.
+   Scholar types their observation between the tags.
+   A note below: "Observation is gated by default. Remove the tags to make it public."
+   [redact] helper button also available here.
+
+   On submission of protocol type:
+   - Concatenate the three sections into rawContent in this format:
+     "HYPOTHESIS\n{hypothesis text}\n\nPROTOCOL\n{protocol text}\n\nOBSERVATION\n{observation text}"
+   - Pass this rawContent to parsePostContent()
+   - The [redact] tags in the Observation section will be parsed out normally.
+
+   SHARED SUBMISSION LOGIC (both types):
+   On submit button click:
+   1. Run parsePostContent(rawContent) → ParsedEntry
+   2. Run validateEntry(parsed) → if error, show inline error, stop.
+   3. Write to Firestore /archive with this exact document:
+      {
+        authorId: conductorStore.uid,
+        title: string (from title field),
+        type: "research" | "protocol",
+        publicContent: parsed.publicContent,
+        redactedContent: parsed.redactedContent,
+        status: "pending",
+        rejectionReason: null,
+        revisionCount: 0,
+        wordCount: parsed.wordCount,
+        isFirstApprovedPost: (conductorStore.postCount === 0), // true only if no approved posts yet
+        createdAt: serverTimestamp(),
+        submittedAt: serverTimestamp(),
+        publishedAt: null
+      }
+   4. Update /scholars/{uid}: set pendingPostId = newPostId
+   5. Update conductorStore: set pendingPostId = newPostId
+   6. Redirect to /dashboard with success message: "Entry submitted. Awaiting review."
+
+─── RULES ───────────────────────────────────────────────────────────────────────
+
+- isFirstApprovedPost is set ONCE at submission time based on postCount === 0.
+  It is NEVER changed after this. Do not recalculate it on approval.
+- The submit button must check conductorStore.pendingPostId BEFORE allowing submission.
+  If pendingPostId !== null, the button is disabled regardless of word count.
+- Word count must always include text inside [redact] tags.
+  A Scholar cannot hide words inside redact tags to game the minimum.
+- Do NOT call parsePostContent in real-time on every keystroke for the word count display.
+  Debounce it at 300ms or compute a fast approximate count for display
+  and run the full parse only on submit.
+- All design: border-radius 2px, Inter font for UI, no shadows, no decorative color.
+  Section labels (HYPOTHESIS, PROTOCOL, OBSERVATION) in Inter, font-weight 600,
+  letter-spacing 0.08em, text-transform uppercase.
+
+─── VERIFICATION GATE ───────────────────────────────────────────────────────────
+
+1. Submit a Research Entry with 140 words.
+   Confirm: submit button disabled, error "Entries must be at least 150 words. Yours is currently 140."
+
+2. Submit a Research Entry with 160 words, including [redact]some secret[/redact].
+   Confirm: Firestore /archive document created with:
+   - status: "pending"
+   - publicContent contains "[REDACTED]" where the tag was
+   - redactedContent contains "some secret"
+   - wordCount: 160 (not 158 — the words inside [redact] are counted)
+   - isFirstApprovedPost: true (assuming this is the first submission)
+
+3. With a pending entry in Firestore:
+   Navigate to /submit again.
+   Confirm: submit button disabled, labelled "Entry awaiting review."
+
+4. Submit a Conduct Protocol.
+   Confirm: Observation section defaults to having [redact] tags.
+   Confirm: the three sections are concatenated in the rawContent before parsing.
+   Confirm: the Firestore document has type: "protocol".
+```
+
+---
+
+# ════════════════════════════════════════════════════════════
+# STEP 4 — REVISE & RESUBMIT
+#
+# ════════════════════════════════════════════════════════════
+
+```
+You are building NorthStar V2.0 — The Conduct Laboratory & Archive.
+Steps 1–3 are complete: Foundation, The Veil component, The Experiment Builder.
+
+STACK: React + TypeScript + Firebase (Auth, Firestore) + Zustand + Tailwind.
+
+YOUR TASK FOR THIS SESSION: Build the Revise & Resubmit flow.
+
+─── CONTEXT ─────────────────────────────────────────────────────────────────────
+
+When the owner rejects a Scholar's entry, the Scholar must be able to revise
+the same entry and resubmit it — not create a new one.
+
+The rejected entry stays in Firestore with status: "rejected" and a rejectionReason.
+The Scholar edits it and resubmits. The SAME Firestore document is updated in-place.
+No new document is created. The document ID never changes through the revision cycle.
+
+─── WHAT TO BUILD ───────────────────────────────────────────────────────────────
+
+1. REVISE ENTRY PAGE
+   Route: /revise/:postId
+   File: src/pages/ReviseEntry.tsx
+
+   On load:
+   - Fetch /archive/{postId} from Firestore
+   - Confirm: the entry's authorId matches the current Scholar's uid.
+     If not: redirect to /dashboard (do not show other Scholars' entries)
+   - Confirm: entry status is "rejected".
+     If status is not "rejected": redirect to /dashboard.
+
+   Display at the top of the page (before the editor):
+   A "RETURNED FOR REVISION" notice block containing:
+   - Label: "| RETURNED FOR REVISION |" in monospace, uppercase, pipe-bordered
+   - The rejectionReason text
+   - Copy: "Revise your entry below and resubmit."
+
+   Editor pre-population:
+   - For type "research": pre-populate the title field and the content textarea.
+     The content textarea should show the ORIGINAL rawContent reconstruction.
+     Since we only stored publicContent and redactedContent, reconstruct as:
+     publicContent with each "[REDACTED]" placeholder replaced by
+     "[redact]{corresponding redactedContent segment}[/redact]"
+     Use the separator "\n---\n" to split redactedContent back into segments.
+   - For type "protocol": pre-populate the three section textareas by splitting
+     publicContent on the section headers (HYPOTHESIS, PROTOCOL, OBSERVATION).
+     Re-inject redactedContent into the Observation section using the same
+     "[redact]...[/redact]" reconstruction logic above.
+
+   Resubmit logic (on submit button click):
+   1. Run parsePostContent(rawContent) → ParsedEntry
+   2. Run validateEntry(parsed) → show error if invalid, stop.
+   3. UPDATE (not create) the existing /archive/{postId} document:
+      {
+        publicContent: parsed.publicContent,
+        redactedContent: parsed.redactedContent,
+        wordCount: parsed.wordCount,
+        status: "pending",              ← back to pending
+        rejectionReason: null,          ← cleared
+        revisionCount: increment by 1,  ← use FieldValue.increment(1)
+        submittedAt: serverTimestamp()  ← updated
+      }
+      DO NOT change: authorId, title, type, isFirstApprovedPost, createdAt.
+      Title is editable — update it if changed.
+   4. Update /scholars/{uid}: set pendingPostId = postId (same ID)
+   5. Update conductorStore: set pendingPostId = postId
+   6. Redirect to /dashboard: "Entry resubmitted. Awaiting review."
+
+2. CONDUCTOR DASHBOARD LINK (partial — full dashboard is Step 8)
+   In the existing /dashboard page (or create a stub if it doesn't exist):
+   For any entry with status: "rejected", show:
+   - The rejectionReason text
+   - A "Revise Entry" link → navigates to /revise/{postId}
+
+─── RULES ───────────────────────────────────────────────────────────────────────
+
+- NEVER create a new Firestore document on resubmit. Always update in-place.
+- revisionCount uses FieldValue.increment(1) — never read-then-write.
+- The Scholar cannot resubmit if they already have a different pendingPostId.
+  (Edge case: if they somehow navigate to /revise while a different entry is pending,
+  show: "You have another entry awaiting review. Wait for it to be reviewed first.")
+- isFirstApprovedPost is NEVER changed during revision. Leave it as-is.
+
+─── VERIFICATION GATE ───────────────────────────────────────────────────────────
+
+1. Manually set a Firestore entry to status: "rejected" with rejectionReason: "Too brief."
+2. Navigate to /revise/{postId}.
+   Confirm: "RETURNED FOR REVISION" notice shows with "Too brief."
+   Confirm: editor is pre-populated with the original content.
+
+3. Edit the entry and resubmit.
+   Confirm in Firestore:
+   - Same document ID — no new document created
+   - status: "pending"
+   - rejectionReason: null
+   - revisionCount: 1 (or incremented from prior value)
+   - submittedAt: updated timestamp
+
+4. Confirm pendingPostId in /scholars/{uid} matches the resubmitted postId.
+
+5. Attempt to access /revise/{postId} for another Scholar's entry.
+   Confirm: redirected to /dashboard.
+```
+
+---
+
+# ════════════════════════════════════════════════════════════
+# STEP 5 — THE REVIEW LABORATORY
+#
+# ════════════════════════════════════════════════════════════
+
+```
+You are building NorthStar V2.0 — The Conduct Laboratory & Archive.
+Steps 1–4 are complete: Foundation, The Veil, The Experiment Builder, Revise & Resubmit.
+
+STACK: React + TypeScript + Firebase (Auth, Firestore) + Zustand + Tailwind.
+
+YOUR TASK FOR THIS SESSION: Build The Review Laboratory — the owner admin panel.
+
+─── CONTEXT ─────────────────────────────────────────────────────────────────────
+
+The Review Laboratory is the owner's tool for approving or rejecting pending entries.
+It is a protected route — accessible ONLY by the platform owner's Firebase UID.
+It is NOT linked in the public navigation. Scholars cannot access it.
+It lives in the same React app as the public-facing routes.
+
+OWNER UID: Replace [OWNER_UID] in the code with the actual Firebase UID string.
+(You will hardcode it. This panel is for one person only.)
+
+─── WHAT TO BUILD ───────────────────────────────────────────────────────────────
+
+1. ROUTE GUARD
+   File: src/components/RequireAdmin.tsx
+   A wrapper component that:
+   - Reads uid from conductorStore
+   - If uid === OWNER_UID: renders children
+   - If uid !== OWNER_UID OR isLoading: redirects to /signin
+   This guard wraps the /admin/review route in the router.
+
+2. THE REVIEW LABORATORY PAGE
+   Route: /admin/review
+   File: src/pages/AdminReview.tsx
+
+   LAYOUT:
+   Two panels side by side on desktop. Stack vertically on mobile.
+   Left panel (40%): The Queue
+   Right panel (60%): The Review View (shows selected entry)
+
+   LEFT PANEL — THE QUEUE
+   - Fetch all /archive entries where status == "pending", ordered by submittedAt ascending.
+   - For each entry in the queue, show a compact row:
+     [TYPE LABEL] [Entry Title] — [Scholar displayName] · [wordCount] words ·
+     Rev. [revisionCount] · [submittedAt formatted as "18 Apr 2026"]
+   - TYPE LABEL rendered as: "| RESEARCH |" or "| PROTOCOL |"
+     monospace, uppercase, pipe-bordered, color: var(--color-accent)
+   - Clicking a row loads it into the right panel.
+   - Empty queue state: "No entries awaiting review." centered in the panel.
+
+   RIGHT PANEL — THE REVIEW VIEW
+   Default state (nothing selected): "Select an entry from the queue."
+
+   When an entry is selected:
+   - Show title at top in EB Garamond, heading size
+   - Below title: Scholar name, type label, wordCount, revisionCount, submittedAt
+   - Two columns side by side:
+     Left column label: "PUBLIC CONTENT" — render publicContent as formatted text
+     Right column label: "REDACTED CONTENT" — render redactedContent as formatted text
+     Both column labels: Inter, 12px, font-weight 600, letter-spacing 0.08em, uppercase
+   - If redactedContent is empty string: right column shows "No redacted content in this entry."
+   - For protocol entries: detect and render the HYPOTHESIS / PROTOCOL / OBSERVATION
+     section headers in the publicContent with visual emphasis (bold, Inter, uppercase)
+
+   APPROVE BUTTON
+   - Label: "APPROVE"
+   - On click: update /archive/{postId}: { status: "approved", publishedAt: serverTimestamp() }
+   - After click: remove entry from queue, show "Entry approved." confirmation, clear right panel.
+   - The onPostStatusChange Firebase Function (Step 6) will handle the Scholar level-up.
+
+   REJECT BUTTON + REASON
+   - Label: "RETURN FOR REVISION"
+   - Below button: textarea for rejection reason
+   - Textarea placeholder: "Explain what needs to change. Be specific."
+   - RETURN FOR REVISION button is DISABLED until textarea has ≥ 20 characters.
+     Show character count: "12 / 20 minimum" until threshold met.
+   - On click (when enabled):
+     Update /archive/{postId}: { status: "rejected", rejectionReason: reasonText }
+     Remove entry from queue. Show "Entry returned for revision." Confirm. Clear panel.
+
+3. REAL-TIME QUEUE
+   Use Firestore onSnapshot listener on the pending query — not a one-time fetch.
+   Queue updates in real-time without page refresh.
+
+─── RULES ───────────────────────────────────────────────────────────────────────
+
+- The approve/reject actions write ONLY to /archive/{postId}.
+  They do NOT touch /scholars/{userId}. That is the Firebase Function's job (Step 6).
+- Do NOT add /admin/review to the public nav component. No link, no reference.
+- The route guard checks uid from conductorStore — not a separate auth check.
+  conductorStore is populated by the auth listener from Step 1.
+- border-radius: 2px everywhere. No shadows. No rounded corners.
+- Type label format is exactly: "| RESEARCH |" and "| PROTOCOL |" — pipes included.
+
+─── VERIFICATION GATE ───────────────────────────────────────────────────────────
+
+1. Navigate to /admin/review while signed in as a non-owner Scholar.
+   Confirm: redirected to /signin or /dashboard. Page does not render.
+
+2. Sign in as owner. Navigate to /admin/review.
+   Confirm: queue renders pending entries.
+
+3. Submit a test entry as a non-owner Scholar (from Step 3 flow).
+   Confirm: entry appears in the Review Laboratory queue in real-time (no refresh).
+
+4. Approve the entry.
+   Confirm: /archive/{postId} status → "approved", publishedAt → set.
+   Confirm: entry disappears from queue.
+
+5. Submit another test entry. Reject it with reason "Needs more depth in analysis."
+   (20+ characters — confirm button becomes active at 20 chars)
+   Confirm: /archive/{postId} status → "rejected",
+   rejectionReason → "Needs more depth in analysis."
+   Confirm: entry disappears from queue.
+```
+
+---
+
+# ════════════════════════════════════════════════════════════
+# STEP 6 — THE HIVE MIND
+# 
+# ════════════════════════════════════════════════════════════
+
+```
+You are building NorthStar V2.0 — The Conduct Laboratory & Archive.
+Steps 1–5 are complete. You are now building server-side Firebase Functions.
+
+STACK: Firebase Functions (Node.js 18+) + Firebase Admin SDK.
+
+YOUR TASK FOR THIS SESSION: Build The Hive Mind — the server functions that
+manage Scholar level changes automatically when entry status changes.
+
+─── CRITICAL RULE ───────────────────────────────────────────────────────────────
+
+ALL level changes happen server-side only.
+The client NEVER writes to level or scholarGrade on /scholars/{userId}.
+These fields are owned entirely by the functions in this file.
+
+─── WHAT TO BUILD ───────────────────────────────────────────────────────────────
+
+File: functions/src/index.ts (or functions/index.js if TypeScript not configured for functions)
+
+FUNCTION 1: onPostStatusChange
+Trigger: Firestore onUpdate — /archive/{postId}
+Fires whenever any field on an archive document changes.
+
+Logic:
+
+const before = change.before.data()
+const after = change.after.data()
+
+APPROVAL PATH — fires when: before.status === 'pending' AND after.status === 'approved'
+  - Fetch /scholars/{after.authorId}
+  - Build updates object:
+    {
+      postCount: FieldValue.increment(1),
+      pendingPostId: null,
+      approvedPostIds: FieldValue.arrayUnion(postId)  ← postId from context.params
+    }
+  - If after.isFirstApprovedPost === true AND author.level < 2:
+    Add to updates: { level: 2, scholarGrade: 'Archivist' }
+  - Write updates to /scholars/{authorId}
+  - Return.
+
+REJECTION PATH — fires when: before.status === 'pending' AND after.status === 'rejected'
+  - Write to /scholars/{authorId}: { pendingPostId: null }
+  - (Scholar can now revise and resubmit)
+  - Return.
+
+All other status transitions: return early, do nothing.
+
+FUNCTION 2: onPostDeleted
+Trigger: Firestore onDelete — /archive/{postId}
+Fires when any archive document is deleted.
+
+Logic:
+- If post.status !== 'approved': return early. Only approved entries affect Scholar level.
+- Fetch /scholars/{post.authorId}
+- Compute: updatedApprovedIds = author.approvedPostIds.filter(id => id !== postId)
+- Build updates:
+  {
+    postCount: Math.max(0, author.postCount - 1),
+    approvedPostIds: updatedApprovedIds
+  }
+- If updatedApprovedIds.length === 0:
+  Add to updates: { level: 1, scholarGrade: 'Initiate' }
+  (Scholar contributed their only approved entry — demote to Initiate)
+- Write updates to /scholars/{authorId}
+
+─── RULES ───────────────────────────────────────────────────────────────────────
+
+- isFirstApprovedPost is read from the archive document. It is NEVER modified by
+  these functions. It was set at submission time and stays forever.
+- Use FieldValue.increment(1) and FieldValue.arrayUnion() — never read-then-write
+  for these fields. Avoids race conditions.
+- postCount floor is 0. Math.max(0, postCount - 1) prevents negative counts.
+- Test ONLY in Firebase Emulator. Do not deploy to production until verified.
+
+─── EMULATOR TEST INSTRUCTIONS ──────────────────────────────────────────────────
+
+Set up Firebase Emulator Suite with Firestore and Functions emulators.
+
+Test scenario A — Level-up:
+1. Create a Scholar document: level: 1, postCount: 0, pendingPostId: "post1", approvedPostIds: []
+2. Create an archive document: { authorId: scholarId, status: "pending", isFirstApprovedPost: true }
+3. Update archive status to "approved".
+4. Confirm Scholar document: level: 2, scholarGrade: "Archivist", postCount: 1,
+   approvedPostIds: ["post1"], pendingPostId: null
+
+Test scenario B — Rejection:
+1. Scholar has pendingPostId: "post2"
+2. Update archive status to "rejected"
+3. Confirm Scholar: pendingPostId: null (Scholar can now resubmit)
+
+Test scenario C — Level-down on deletion:
+1. Scholar has level: 2, postCount: 1, approvedPostIds: ["post3"]
+2. Delete archive document "post3" (set status to "approved" first)
+3. Confirm Scholar: level: 1, scholarGrade: "Initiate", postCount: 0, approvedPostIds: []
+
+Test scenario D — Deletion with multiple approved posts (no level-down):
+1. Scholar has level: 2, postCount: 2, approvedPostIds: ["post4", "post5"]
+2. Delete archive document "post4"
+3. Confirm Scholar: level: 2 (unchanged), postCount: 1, approvedPostIds: ["post5"]
+
+─── VERIFICATION GATE ───────────────────────────────────────────────────────────
+
+All four test scenarios above must pass in the Emulator before this step is done.
+Do not proceed to Step 7 until all four pass.
+```
+
+---
+
+# ════════════════════════════════════════════════════════════
+# STEP 7 — SECURITY WIRE
+# 
+# ════════════════════════════════════════════════════════════
+
+```
+You are building NorthStar V2.0 — The Conduct Laboratory & Archive.
+Steps 1–6 are complete. You are now wiring the security layer and connecting
+the live Scholar level to The Veil component.
+
+STACK: React + TypeScript + Firebase (Auth, Firestore, Functions) + Zustand + Tailwind.
+
+YOUR TASK FOR THIS SESSION: Build the security wire — the getPostForUser callable
+function and the live connection from conductorStore to TheVeil.
+
+─── THE CORE SECURITY RULE ─────────────────────────────────────────────────────
+
+redactedContent must NEVER appear in the DOM or in any API response for Level 1 Scholars.
+
+This is enforced by ONE rule: all archive entry fetches route through the
+getPostForUser callable function. No component fetches /archive/{postId} directly.
+Direct Firestore reads of archive documents must not exist anywhere in the client.
+
+─── WHAT TO BUILD ───────────────────────────────────────────────────────────────
+
+1. CALLABLE FUNCTION: getPostForUser
+   Add to functions/src/index.ts
+
+   Trigger: HTTPS Callable
+   Input: { postId: string }
+
+   Logic:
+   - If not authenticated: throw HttpsError('unauthenticated', 'Sign in required.')
+   - Fetch /archive/{postId} and /scholars/{uid} in parallel (Promise.all)
+   - If post does not exist OR post.status !== 'approved':
+     throw HttpsError('not-found', 'Entry not found.')
+   - Build base response (always safe for Level 1):
+     {
+       id: postId,
+       title: post.title,
+       type: post.type,
+       publicContent: post.publicContent,
+       authorId: post.authorId,
+       publishedAt: post.publishedAt,
+       wordCount: post.wordCount
+     }
+   - If scholar.level >= 2: append response.redactedContent = post.redactedContent
+   - Return response.
+
+   Note: redactedContent is ONLY appended for Level 2+ Scholars.
+   For Level 1 Scholars, the field does not exist in the response object at all.
+
+2. ENTRY DETAIL PAGE
+   Route: /archive/:postId
+   File: src/pages/EntryDetail.tsx
+
+   On load:
+   - Call getPostForUser({ postId }) via Firebase httpsCallable
+   - Show loading state while fetching
+   - On success: render the entry
+   - On error 'not-found': show "Entry not found." — do not expose error details
+
+   Rendering the entry:
+   - Title: EB Garamond, heading-lg size (≈31px)
+   - Author name · date · type label (monospace pipe format) — Inter, 14px, muted color
+   - publicContent: rendered as formatted prose. Inter, 18px, line-height 1.75, max-width 68ch.
+     Where "[REDACTED]" placeholder appears in publicContent:
+     Render <TheVeil userLevel={level} children={response.redactedContent} />
+     Note: if level < 2, response.redactedContent is undefined — TheVeil handles this correctly.
+   - Read level from conductorStore: const level = useConductorStore(s => s.level)
+
+   IMPORTANT — rendering redacted segments:
+   publicContent may have multiple "[REDACTED]" placeholders.
+   redactedContent stores segments joined by "\n---\n".
+   Split redactedContent on "\n---\n" to get segments array.
+   Map over publicContent split on "[REDACTED]" and interleave with TheVeil instances,
+   one per segment. If level < 2, pass undefined to each TheVeil — the server sent no segments.
+
+3. FIRESTORE SECURITY RULES UPDATE
+   Update firestore.rules:
+
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+
+       match /archive/{postId} {
+         allow read: if request.auth != null
+                     && resource.data.status == 'approved';
+         allow write: if false;
+       }
+
+       match /scholars/{userId} {
+         allow read: if request.auth != null;
+         allow write: if false;
+       }
+
+       match /admin/{document=**} {
+         allow read, write: if request.auth.uid == '[OWNER_UID]';
+       }
+     }
+   }
+
+   Note: These rules allow reading the archive document but the client query must
+   NOT request redactedContent directly. The callable function is the only path
+   to get redactedContent — and it enforces level checking server-side.
+   If Firestore rules alone do not prevent a field from being read, the callable
+   function is the enforcement layer. Both must be in place.
+
+─── RULES ───────────────────────────────────────────────────────────────────────
+
+- Zero direct Firestore reads of /archive/{postId} in any component. All through callable.
+- TheVeil receives undefined for redactedContent when level < 2 — this is correct behavior.
+- useConductorStore(s => s.level) — selector pattern. Not useConductorStore() (full store).
+- The EntryDetail page must handle the case where redactedContent is undefined gracefully.
+
+─── VERIFICATION GATE ───────────────────────────────────────────────────────────
+
+Test in Firebase Emulator with two Scholar accounts: one Level 1, one Level 2.
+
+1. Level 1 Scholar fetches /archive/:postId via getPostForUser.
+   Confirm in the function response: redactedContent field is ABSENT.
+   Confirm in the DOM: no secret text appears anywhere (DevTools → Elements search).
+   Confirm: TheVeil renders black bar + CTA.
+
+2. Level 2 Scholar fetches same entry.
+   Confirm: redactedContent field IS present in response.
+   Confirm: TheVeil renders text with veilReveal animation.
+
+3. Unauthenticated request to getPostForUser.
+   Confirm: throws unauthenticated error. No data returned.
+
+4. Request for a non-existent postId.
+   Confirm: throws not-found error. No data returned.
+```
+
+---
+
+# ════════════════════════════════════════════════════════════
+# STEP 8 — THE CONDUCTOR DASHBOARD
+# # ════════════════════════════════════════════════════════════
+
+```
+You are building NorthStar V2.0 — The Conduct Laboratory & Archive.
+Steps 1–7 are complete. You are now building the Scholar's personal dashboard.
+
+STACK: React + TypeScript + Firebase (Firestore) + Zustand + Tailwind.
+
+YOUR TASK FOR THIS SESSION: Build The Conductor Dashboard.
+
+─── CONTEXT ─────────────────────────────────────────────────────────────────────
+
+The Conductor Dashboard is the Scholar's personal route. It shows their standing,
+their submission history, and a placeholder for the Harmony tracker (V2.1).
+It is not a public page — requires authentication.
+
+─── WHAT TO BUILD ───────────────────────────────────────────────────────────────
+
+Route: /dashboard
+File: src/pages/ConductorDashboard.tsx
+Auth guard: redirect to /signin if not authenticated (uid is null in conductorStore)
+
+SECTION 1 — STANDING PANEL
+Read all values from conductorStore (not a fresh Firestore fetch — store is already live).
+
+Layout: a bordered panel, background var(--color-surface), border 1px var(--color-border-subtle), border-radius 2px, padding 24px.
+
+Display:
+- Scholar Grade badge: "| INITIATE |" or "| ARCHIVIST |"
+  font-family: monospace, font-weight: 600, font-size: 12px,
+  letter-spacing: 0.1em, text-transform: uppercase, color: var(--color-accent)
+- Level indicator: "Level 1" or "Level 2" — Inter, 14px, muted color
+- Approved entries: "{postCount} approved entries" — Inter, 14px, muted color
+- Pending status:
+  If pendingPostId !== null: "| 1 ENTRY AWAITING REVIEW |" in same monospace pipe style, muted gold color
+  If pendingPostId === null: nothing shown here
+
+SECTION 2 — ENTRY HISTORY
+Fetch /archive where authorId == uid, ordered by createdAt descending.
+(This is a direct Firestore read — Scholar is reading their own entries, not public archive content.
+No level gate applies here. No redactedContent is fetched in this query.)
+
+For each entry, render a row:
+- Status indicator: a small 8px circle, colors:
+  approved → var(--color-success) which is #2D5A3B
+  pending → var(--color-accent)
+  rejected → var(--color-error) which is #8B2F2F
+  draft → var(--color-text-disabled)
+- Entry title — Inter, 16px, color: var(--color-text-primary)
+  If approved: title is a link to /archive/{postId}
+  If not approved: title is plain text
+- Type label: "| RESEARCH |" or "| PROTOCOL |" — monospace, 11px, pipe-bordered, muted
+- Date: submittedAt formatted as "18 Apr 2026" — Inter, 14px, muted
+- Revision count: if revisionCount > 0: "Rev. {revisionCount}" — Inter, 12px, muted
+
+For REJECTED entries only, show below the row:
+- A bordered notice box (border-left: 2px solid var(--color-error), padding-left: 12px):
+  Label: "RETURNED FOR REVISION" — Inter, 11px, uppercase, letter-spacing 0.08em, error color
+  The rejectionReason text — Inter, 14px, secondary text color
+  A link: "Revise Entry →" — navigates to /revise/{postId}, color: var(--color-accent)
+
+Empty state (no entries yet): "No entries submitted yet. Begin in The Experiment Builder."
+with a link to /submit.
+
+SECTION 3 — HARMONY TRACKER (PLACEHOLDER)
+A bordered panel identical in style to Section 1.
+
+Display:
+- Panel label: "HARMONY TRACKER" — Inter, 12px, uppercase, letter-spacing 0.08em, muted
+- Two stat rows:
+  "Focus Score      —"
+  "Experiments Run  —"
+  Inter, 16px for the label, monospace "—" for the value
+- Below the stats: italic note in muted color, Inter 14px:
+  "Harmony tracking coming in V2.1."
+
+Do NOT build any interaction on this panel. It is display-only.
+Do NOT write to conductStats. Render the null values as "—".
+
+─── RULES ───────────────────────────────────────────────────────────────────────
+
+- Standing Panel reads from conductorStore — no Firestore fetch. Data is already live.
+- Entry History fetches the Scholar's OWN entries — no redactedContent field requested.
+- No shadows anywhere. Border difference (subtle vs strong) signals elevation.
+- Scholar Grade badge is always pipe-bordered monospace. Not a rounded tag. Not a pill badge.
+- Harmony tracker: zero logic, zero writes, zero interaction. Stub only.
+
+─── VERIFICATION GATE ───────────────────────────────────────────────────────────
+
+1. Sign in as a Level 1 Scholar with one rejected entry (rejectionReason: "Too brief.").
+   Confirm: Grade shows "| INITIATE |". Level shows "Level 1".
+   Confirm: Entry row shows red circle. rejectionReason text visible. "Revise Entry →" link present.
+   Confirm: "Revise Entry →" navigates to /revise/{postId}.
+
+2. Sign in as a Level 2 Scholar with two approved entries.
+   Confirm: Grade shows "| ARCHIVIST |". postCount shows 2.
+   Confirm: Both entry titles are links to /archive/{postId}.
+
+3. Scholar with pendingPostId set.
+   Confirm: "| 1 ENTRY AWAITING REVIEW |" appears in Standing Panel.
+
+4. Harmony tracker renders "—" for both stats. No errors. No interaction.
+```
+
+---
+
+# ════════════════════════════════════════════════════════════
+# STEP 9 — THE ARCHIVE LAYOUT
+# 
+# ════════════════════════════════════════════════════════════
+
+```
+You are building NorthStar V2.0 — The Conduct Laboratory & Archive.
+Steps 1–8 are complete. This is the final build step.
+
+STACK: React + TypeScript + Firebase (Firestore) + Zustand + Tailwind.
+
+YOUR TASK FOR THIS SESSION: Build The Archive — the public listing page and
+the 7:3 article layout with Marginalia sidebar stub.
+
+─── CONTEXT ─────────────────────────────────────────────────────────────────────
+
+The Archive is the public face of NorthStar. It lists all approved entries.
+The layout uses a 7:3 split: content column (flex) and Marginalia sidebar (320px fixed).
+Marginalia annotation logic ships in V2.2 — this step builds the shell only.
+
+─── WHAT TO BUILD ───────────────────────────────────────────────────────────────
+
+1. THE ARCHIVE — LISTING PAGE
+   Route: /archive
+   File: src/pages/Archive.tsx
+
+   Fetch: /archive where status == "approved", ordered by publishedAt descending.
+   For each entry, render a Standard Card:
+
+   STANDARD CARD SPEC:
+   - background: var(--color-surface)
+   - border: 1px solid var(--color-border-subtle)
+   - border-radius: 2px
+   - padding: 24px
+   - on hover: border-color → var(--color-border-strong), transform: translateY(-1px)
+   - transition: border-color 200ms ease, transform 150ms ease
+   Card interior (top to bottom, spacing as noted):
+   [TYPE LABEL] — "| RESEARCH |" or "| PROTOCOL |"
+     monospace, 12px, font-weight 600, letter-spacing 0.1em, uppercase,
+     color: var(--color-accent), margin-bottom: 8px
+   [TITLE] — EB Garamond, 20px, font-weight 500, line-height 1.35,
+     color: var(--color-text-primary), margin-bottom: 12px,
+     max 3 lines then truncate (-webkit-line-clamp: 3)
+   [EXCERPT] — First 200 characters of publicContent (strip "[REDACTED]" placeholders for excerpt).
+     Inter, 16px, line-height 1.6, color: var(--color-text-secondary),
+     margin-bottom: 16px, max 2 lines then truncate
+   [METADATA] — Scholar displayName · publishedAt ("18 Apr 2026") · wordCount ("412 words")
+     Inter, 14px, color: var(--color-text-muted)
+     Separator between items: a 3px × 3px circle, border-radius 50%, background: var(--color-text-disabled)
+
+   Cards in a 2-column CSS Grid on desktop, 1-column on mobile (<768px).
+   Grid gap: 32px.
+   Max-width container: 1280px, centered, horizontal padding 32px desktop / 16px mobile.
+
+   Empty state: "The Archive awaits its first entry."
+
+2. ENTRY DETAIL PAGE — 7:3 LAYOUT UPGRADE
+   Update: src/pages/EntryDetail.tsx (built in Step 7)
+   Wrap the existing entry content in the 7:3 layout structure.
+
+   LAYOUT STRUCTURE:
+   .page-container — max-width 1280px, centered, padding 0 32px
+   .layout-main — CSS Grid, grid-template-columns: 1fr 320px, gap: 48px, align-items: start
+
+   LEFT COLUMN (content):
+   - Entry title: EB Garamond, display-lg (≈61px) for featured, heading-xl (≈39px) for standard
+   - Metadata row: type label · Scholar name · publishedAt · wordCount
+     Inter, 14px, muted, pipe-separated: "| PROTOCOL | Conductor Name · 18 Apr 2026 · 412 words"
+   - Reading progress bar: 2px line at top of viewport, background: var(--color-accent),
+     width controlled by JS scroll listener (as per DESIGN.md spec)
+   - Article body: publicContent rendered as prose.
+     Inter, 18px, line-height 1.75, max-width 68ch.
+     First paragraph: font-weight 500, color var(--color-text-primary) (lead treatment).
+     [REDACTED] placeholders → TheVeil component instances (from Step 7 logic).
+
+   RIGHT COLUMN (Marginalia sidebar — 320px fixed):
+   Sidebar sections, top to bottom:
+
+   ABOUT THE CONDUCTOR
+   - Scholar displayName — EB Garamond, 20px
+   - Scholar Grade badge: "| ARCHIVIST |" — monospace, 11px, pipe-bordered, accent color
+   - "View all entries →" link to /archive filtered by author (stub link for now)
+
+   RELATED ENTRIES (stub)
+   - Label: "FROM THE ARCHIVE" — Inter, 11px, uppercase, letter-spacing 0.1em, muted
+   - 3 compact cards from the archive (random approved entries, excluding current)
+     Compact card: "[TYPE] Title — Author · Date" single line, no excerpt
+     Border-bottom: 1px solid var(--color-border-ghost), padding: 12px 0
+     On hover: border-color → var(--color-border-subtle)
+
+   MARGINALIA — STUB
+   - Label: "MARGINALIA" — Inter, 11px, uppercase, letter-spacing 0.1em, muted
+   - Placeholder text: "Scholarly annotations available in V2.2."
+   - border: 1px dashed var(--color-border-subtle), padding: 16px, border-radius: 2px
+
+   RESPONSIVE:
+   Below 1024px: grid-template-columns: 1fr (single column)
+   Sidebar moves below the article body. Marginalia stub hidden on mobile.
+
+3. NAVIGATION BAR
+   File: src/components/Nav.tsx
+   
+   Links (left): NORTHSTAR (logo/home → /) | THE ARCHIVE (→ /archive)
+   Links (right):
+   - If not authenticated: "Sign In" → /signin
+   - If authenticated: Scholar Grade badge "| INITIATE |" or "| ARCHIVIST |" (from conductorStore)
+     + "THE LAB" → /submit
+     + "DASHBOARD" → /dashboard
+   
+   Nav style: border-bottom 1px solid var(--color-border-subtle), background var(--color-bg),
+   padding 0 32px, height 56px, Inter font throughout.
+   /admin/review is NOT linked here under any circumstances.
+
+─── RULES ───────────────────────────────────────────────────────────────────────
+
+- No box-shadow anywhere. Elevation via border + background difference only.
+- No scale() transforms. translateY(-1px) on card hover only.
+- No border-radius above 2px.
+- No hero images on archive cards. Typography is the visual.
+- [REDACTED] text stripped from card excerpts — Initiates see "..." where redacted text would appear.
+- Marginalia sidebar: shell only. No annotation logic. No click handlers. No state.
+- Reading progress bar: JS scroll listener only, no library.
+
+─── VERIFICATION GATE ───────────────────────────────────────────────────────────
+
+1. /archive renders all approved entries as cards.
+   Confirm: 2-column grid on desktop, 1-column on mobile.
+   Confirm: card hover lifts by 1px, border darkens. No scale, no shadow.
+   Confirm: "[REDACTED]" does not appear in card excerpts.
+
+2. /archive/:postId renders 7:3 layout on desktop.
+   Confirm: sidebar is 320px. Content column fills remaining space.
+   Confirm: below 1024px collapses to single column. Sidebar below article.
+
+3. Level 1 Scholar views an entry with redacted content.
+   Confirm: TheVeil black bar + CTA renders where redacted segments are.
+   Confirm: text does not appear in DOM.
+
+4. Reading progress bar: scroll to bottom of a long entry.
+   Confirm: accent-colored 2px line at viewport top fills from 0% to 100%.
+
+5. Nav: confirm /admin/review is not linked anywhere in the nav for any Scholar.
+```
+
+---
+*End of NorthStar V2.0 Gemini CLI Prompt Suite*

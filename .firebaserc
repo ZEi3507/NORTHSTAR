@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "north-star-ce35a",
+    "staging": "north-star-ce35a"
+  },
+  "targets": {},
+  "etags": {}
+}

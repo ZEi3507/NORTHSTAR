@@ -1,0 +1,285 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #05040A;
+  --color-accent: #7C3AED;
+  --color-accent-light: #A78BFA;
+  --color-accent-dark: #2E1065;
+  --color-mint: #2BDEAC;
+  --color-mint-dark: #00894D;
+  
+  --font-display: "Cormorant Garamond", serif;
+  --font-heading: "EB Garamond", serif;
+  --font-body: Inter, sans-serif;
+  --font-mono: monospace;
+
+  --background-image-glass-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  --background-image-violet-green: linear-gradient(315deg, #7C3AED, #2BDEAC);
+  
+  --radius-default: 2px;
+}
+
+/* Custom Utilities for Glassmorphism in Tailwind v4 */
+@utility glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+@utility glass-card {
+  @apply glass;
+  border-radius: 24px;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(24px) saturate(200%);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Skewed Glass Card Animation Utility */
+@utility skew-glass-card {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: 0.5s;
+  z-index: 1;
+
+  &::before {
+    content: ' ';
+    position: absolute;
+    top: 0;
+    left: 20px;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(315deg, #7C3AED, #2BDEAC);
+    border-radius: 8px;
+    transform: skewX(15deg);
+    transition: 0.5s;
+    z-index: -2;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20px;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(315deg, #7C3AED, #2BDEAC);
+    border-radius: 8px;
+    transform: skewX(15deg);
+    transition: 0.5s;
+    filter: blur(30px);
+    z-index: -2;
+  }
+
+  &:hover::before,
+  &:hover::after {
+    transform: skewX(0deg) scaleX(1.3);
+    left: 0;
+    width: 100%;
+    filter: blur(40px);
+    opacity: 0.8;
+  }
+
+  .glass-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px) saturate(180%);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    z-index: 1;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  &:hover .glass-content {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(25px) saturate(220%);
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* Liquid Glass Utility */
+@utility liquid-glass {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  z-index: 1;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+                                rgba(43, 222, 172, 0.15) 0%, 
+                                rgba(124, 58, 237, 0.1) 50%, 
+                                transparent 100%);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  &:hover {
+    transform: translateY(-2px) scale(1.02);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 40px -10px rgba(124, 58, 237, 0.5),
+                inset 0 0 20px rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
+  }
+
+  &:hover::before {
+    opacity: 1;
+  }
+
+  &:active {
+    transform: scale(0.98);
+    transition: all 0.1s ease;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-15px) rotate(5deg); }
+}
+
+@layer base {
+  :root {
+    --color-accent-var: #7C3AED;
+    --color-bg: #F8F7F4;
+    --color-surface: #FFFFFF;
+    --color-text-primary: #0F172A;
+    --color-text-secondary: #475569;
+    --color-success: #10B981;
+    --color-error: #EF4444;
+  }
+
+  [data-theme="dark"] {
+    --color-accent-var: #A78BFA;
+    --color-bg: #05040A;
+    --color-surface: rgba(15, 7, 32, 0.4);
+    --color-text-primary: #F8FAFC;
+    --color-text-secondary: #CBD5E1;
+    --color-success: #2BDEAC;
+    --color-error: #F87171;
+  }
+
+  body {
+    @apply antialiased;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* Apply Liquid Glass to all clickable areas */
+  a:not(.no-liquid), 
+  button:not(.no-liquid), 
+  [role="button"]:not(.no-liquid),
+  .cursor-pointer:not(.no-liquid),
+  .btn-primary,
+  .btn-secondary {
+    @apply liquid-glass;
+    cursor: pointer;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'EB Garamond', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  .veil-bar {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    cursor: not-allowed;
+  }
+
+  .veil-bar span:first-child {
+    background: #000;
+    color: transparent;
+    border-radius: 2px;
+    transition: box-shadow 300ms ease;
+  }
+
+  [data-theme="dark"] .veil-bar span:first-child {
+    box-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
+  }
+
+  .veil-cta {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--color-accent-var);
+    opacity: 0.8;
+  }
+
+  .pyramid-loader {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    transform-style: preserve-3d;
+    transform: rotateX(-20deg);
+  }
+
+  .pyramid-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    animation: spin 4s linear infinite;
+  }
+
+  @keyframes spin {
+    100% { transform: rotateY(360deg); }
+  }
+
+  .pyramid-loader .side {
+    width: 70px;
+    height: 70px;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    margin: auto;
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+
+  .pyramid-loader .side1 { transform: rotateZ(-30deg) rotateY(90deg); background: conic-gradient(#2BDEAC, #7C3AED, #D8CCE6, #2E1065); }
+  .pyramid-loader .side2 { transform: rotateZ(30deg) rotateY(90deg); background: conic-gradient(#2E1065, #D8CCE6, #7C3AED, #2BDEAC); }
+  .pyramid-loader .side3 { transform: rotateX(30deg); background: conic-gradient(#2E1065, #D8CCE6, #7C3AED, #2BDEAC); }
+  .pyramid-loader .side4 { transform: rotateX(-30deg); background: conic-gradient(#2BDEAC, #7C3AED, #D8CCE6, #2E1065); }
+
+  .pyramid-loader .shadow {
+    width: 60px; height: 60px;
+    background: #8B5AD5;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    margin: auto;
+    transform: rotateX(90deg) translateZ(-40px);
+    filter: blur(12px);
+  }
+}
