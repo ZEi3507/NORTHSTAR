@@ -37,8 +37,10 @@ const Node = ({ node, onClick, intensity }: { node: ConstellationNode; onClick: 
           roughness={0.1}
           metalness={0.1}
           clearcoat={1}
-          opacity={0.8}
+          opacity={0.9}
           transparent
+          emissive={color}
+          emissiveIntensity={2 * intensity}
         />
       </mesh>
       {hovered && (
@@ -55,7 +57,7 @@ const Node = ({ node, onClick, intensity }: { node: ConstellationNode; onClick: 
           </Text>
         </Float>
       )}
-      <pointLight intensity={(hovered ? 200 : 50) * intensity} color={color} distance={20} />
+      <pointLight intensity={(hovered ? 400 : 150) * intensity} color={color} distance={40} />
     </group>
   );
 };
