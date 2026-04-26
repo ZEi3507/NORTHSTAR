@@ -16,6 +16,7 @@ export const initAuthListener = () => {
           const data = scholarSnap.data();
           setConductor({
             uid: user.uid,
+            displayName: data.displayName || user.displayName,
             level: data.level,
             scholarGrade: data.scholarGrade,
             postCount: data.postCount,
@@ -26,10 +27,7 @@ export const initAuthListener = () => {
           });
           console.log("Conductor store populated:", user.uid);
         } else {
-          // Document might not exist yet if sign-up doc creation is still in progress
-          // The sign-up form will handle the initial setConductor if needed,
-          // but we should still set uid and isLoading: false here if the user exists.
-          setConductor({ uid: user.uid, isLoading: false });
+          setConductor({ uid: user.uid, displayName: user.displayName, isLoading: false });
         }
       } catch (error) {
         console.error("Error fetching scholar document:", error);

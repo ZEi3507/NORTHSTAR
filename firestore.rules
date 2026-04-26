@@ -45,5 +45,17 @@ service cloud.firestore {
         );
       }
     }
+
+    match /connections/{connectionId} {
+      allow read: if request.auth != null && (request.auth.uid in resource.data.participants);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.fromId && (
+        (request.resource.data.type in ['study_partner', 'business_partner'] && request.resource.data.status == 'pending') ||
+        (request.resource.data.type == 'follower' && request.resource.data.status == 'accepted')
+      );
+      allow update: if request.auth != null && (
+        (request.auth.uid == resource.data.toId && request.resource.data.status == 'accepted' && resource.data.status == 'pending')
+      );
+      allow delete: if request.auth != null && (request.auth.uid in resource.data.participants);
+    }
   }
 }

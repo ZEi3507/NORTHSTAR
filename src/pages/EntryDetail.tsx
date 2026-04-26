@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, doc, getDoc, increment, onSnapshot, writeBatch } from 'firebase/firestore';
+import { Star, ThumbsDown } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { useConductorStore } from '../stores/conductorStore';
 import { TheVeil } from '../components/TheVeil';
 import Nav from '../components/Nav';
 import Loading from '../components/Loading';
+import { EchoButton } from '../components/ui/EchoButton';
 
 interface PostResponse {
   id: string;
@@ -33,13 +35,57 @@ interface RelatedEntry {
 
 const EntryDetail: React.FC = () => {
   const { postId } = useParams<{ postId: string }>();
-  const level = useConductorStore((s) => s.level);
+  const { uid, level } = useConductorStore();
   const [post, setPost] = useState<PostResponse | null>(null);
   const [author, setAuthor] = useState<AuthorInfo | null>(null);
   const [relatedEntries, setRelatedEntries] = useState<RelatedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+
+  const [stars, setStars] = useState(0);
+  const [dislikes, setDislikes] = useState(0);
+  const [userInteraction, setUserInteraction] = useState<'star' | 'dislike' | null>(null);
+
+  useEffect(() => {
+    if (!postId) return;
+    const postRef = doc(db, 'archive', postId);
+    
+    const unsubPost = onSnapshot(postRef, (snap) => {
+      const data = snap.data();
+      setStars(data?.starCount || 0);
+      setDislikes(data?.dislikeCount || 0);
+    });
+
+    let unsubUser = () => {};
+    if (uid) {
+      unsubUser = onSnapshot(doc(db, 'archive', postId, 'interactions', uid), (snap) => {
+        if (snap.exists()) setUserInteraction(snap.data().type);
+        else setUserInteraction(null);
+      });
+    }
+
+    return () => { unsubPost(); unsubUser(); };
+  }, [postId, uid]);
+
+  const handleInteraction = async (type: 'star' | 'dislike') => {
+    if (!postId || !uid) return;
+    const batch = writeBatch(db);
+    const postRef = doc(db, 'archive', postId);
+    const interactionRef = doc(db, 'archive', postId, 'interactions', uid);
+
+    if (userInteraction === type) {
+      batch.delete(interactionRef);
+      batch.update(postRef, { [type === 'star' ? 'starCount' : 'dislikeCount']: increment(-1) });
+    } else {
+      if (userInteraction) {
+        batch.update(postRef, { [userInteraction === 'star' ? 'starCount' : 'dislikeCount']: increment(-1) });
+      }
+      batch.set(interactionRef, { type });
+      batch.update(postRef, { [type === 'star' ? 'starCount' : 'dislikeCount']: increment(1) });
+    }
+    await batch.commit();
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -208,9 +254,12 @@ const EntryDetail: React.FC = () => {
                 <span className="text-xs text-slate-500 font-mono">ID: {post.id.substring(0,8).toUpperCase()}</span>
               </div>
               
-              <h1 className="text-5xl sm:text-6xl font-heading font-bold text-white mb-8 leading-[1.1] tracking-tight">
-                {post.title}
-              </h1>
+              <div className="flex items-center justify-between gap-4 mb-8">
+                <h1 className="text-5xl sm:text-6xl font-heading font-bold text-white leading-[1.1] tracking-tight">
+                  {post.title}
+                </h1>
+                <EchoButton text={`${post.title}. ${post.publicContent}`} />
+              </div>
 
               <div className="flex items-center gap-6 text-sm text-slate-400 font-medium pb-8 border-b border-white/5">
                 <div className="flex items-center gap-2">
@@ -239,6 +288,23 @@ const EntryDetail: React.FC = () => {
                   )}
                 </React.Fragment>
               ))}
+
+              <div className="flex gap-6 mt-12 py-8 border-t border-white/10">
+                <button 
+                  onClick={() => handleInteraction('star')}
+                  className={`liquid-glass flex items-center gap-2 px-6 py-2 rounded-[2px] transition-all ${userInteraction === 'star' ? 'text-mint border-mint' : 'text-slate-400'}`}
+                >
+                  <Star size={18} fill={userInteraction === 'star' ? 'currentColor' : 'none'} />
+                  <span>{stars} Stars</span>
+                </button>
+                <button 
+                  onClick={() => handleInteraction('dislike')}
+                  className={`liquid-glass flex items-center gap-2 px-6 py-2 rounded-[2px] transition-all ${userInteraction === 'dislike' ? 'text-red-400 border-red-400' : 'text-slate-400'}`}
+                >
+                  <ThumbsDown size={18} fill={userInteraction === 'dislike' ? 'currentColor' : 'none'} />
+                  <span>{dislikes} Dislikes</span>
+                </button>
+              </div>
             </section>
           </article>
 

@@ -56,8 +56,14 @@
 - [x] Implement Reading Progress Bar
 - [x] Finalize `Nav.tsx` consistency
 
-## Project Status: COMPLETED
-All 9 steps have been built and verified against the PRD.
+## Step 10: Social Hooks (Complete)
+- [x] Create `useSocial` hook for scholar relationships
+- [x] Implement `follow`, `requestPartner`, `acceptPartner`, `removeConnection`
+- [x] Implement `useConnections` for real-time state
+- [x] Secure `connections` collection with Firestore rules
+
+## Project Status: COMPLETED (Expansion V2.1)
+All 10 steps have been built and verified.
 Builds (frontend & functions) are passing.
 Security boundaries are enforced.
 Aesthetics align with NorthStar design tokens.
