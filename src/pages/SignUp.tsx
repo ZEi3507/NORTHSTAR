@@ -34,8 +34,8 @@ const SignUp: React.FC = () => {
         approvedPostIds: [],
         pendingPostId: null,
         conductStats: {
-          focusScore: null,
-          experimentsRun: null,
+          focusScore: 0,
+          experimentsRun: 0,
         },
         createdAt: serverTimestamp()
       };

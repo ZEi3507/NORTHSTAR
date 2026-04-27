@@ -40,6 +40,11 @@ const SubmitEntry: React.FC = () => {
   const protRef = useRef<HTMLTextAreaElement>(null);
   const obsRef = useRef<HTMLTextAreaElement>(null);
 
+  const getRawContent = () => {
+    if (type === 'research') return content;
+    return `HYPOTHESIS\n${hypothesis}\n\nPROTOCOL\n${protocol}\n\nOBSERVATION\n${observation}`;
+  };
+
   // Debounced word count
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -50,11 +55,6 @@ const SubmitEntry: React.FC = () => {
 
     return () => clearTimeout(handler);
   }, [content, hypothesis, protocol, observation, type]);
-
-  const getRawContent = () => {
-    if (type === 'research') return content;
-    return `HYPOTHESIS\n${hypothesis}\n\nPROTOCOL\n${protocol}\n\nOBSERVATION\n${observation}`;
-  };
 
   const handleRedact = (
     ref: React.RefObject<HTMLTextAreaElement | null>,
@@ -90,7 +90,6 @@ const SubmitEntry: React.FC = () => {
       }
 
       const postRef = doc(collection(db, 'archive'));
-      const gatedRef = doc(db, 'archive', postRef.id, 'gated', 'content');
       const scholarRef = doc(db, 'scholars', uid);
 
       const postData = {
@@ -98,6 +97,7 @@ const SubmitEntry: React.FC = () => {
         title,
         type,
         publicContent: parsed.publicContent,
+        redactedContent: parsed.redactedContent,
         status: 'pending',
         rejectionReason: null,
         revisionCount: 0,
@@ -112,7 +112,6 @@ const SubmitEntry: React.FC = () => {
       const batch = writeBatch(db);
       
       batch.set(postRef, postData);
-      batch.set(gatedRef, { redactedContent: parsed.redactedContent });
       batch.update(scholarRef, { pendingPostId: postRef.id });
 
       await batch.commit();

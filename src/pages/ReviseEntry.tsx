@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import {
@@ -22,7 +22,7 @@ const ReviseEntry: React.FC = () => {
   const pendingPostId = useConductorStore((s) => s.pendingPostId);
   const setConductor = useConductorStore((s) => s.setConductor);
 
-  const [type, setType] = useState<EntryType>('research');
+  const [type] = useState<EntryType>('research');
   const [title, setTitle] = useState('');
 
   // Research fields
@@ -33,7 +33,7 @@ const ReviseEntry: React.FC = () => {
   const [protocol, setProtocol] = useState('');
   const [observation, setObservation] = useState('');
 
-  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [rejectionReason] = useState<string | null>(null);
   const [wordCount, setWordCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +43,11 @@ const ReviseEntry: React.FC = () => {
   const hypRef = useRef<HTMLTextAreaElement>(null);
   const protRef = useRef<HTMLTextAreaElement>(null);
   const obsRef = useRef<HTMLTextAreaElement>(null);
+
+  const getRawContent = useCallback(() => {
+    if (type === 'research') return content;
+    return `HYPOTHESIS\n${hypothesis}\n\nPROTOCOL\n${protocol}\n\nOBSERVATION\n${observation}`;
+  }, [content, hypothesis, protocol, observation, type]);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -63,13 +68,7 @@ const ReviseEntry: React.FC = () => {
           return;
         }
 
-        const gatedDoc = await getDoc(doc(db, 'archive', postId, 'gated', 'content'));
-        const redactedContent = gatedDoc.exists() ? gatedDoc.data().redactedContent : '';
-
-        setTitle(data.title);
-        setType(data.type);
-        setRejectionReason(data.rejectionReason);
-
+        const redactedContent = data.redactedContent || '';
         const publicContent = data.publicContent || '';
         const segments = redactedContent.split('\n---\n');
         let segmentIndex = 0;
@@ -110,12 +109,7 @@ const ReviseEntry: React.FC = () => {
     }, 300);
 
     return () => clearTimeout(handler);
-  }, [content, hypothesis, protocol, observation, type, isLoading]);
-
-  const getRawContent = () => {
-    if (type === 'research') return content;
-    return `HYPOTHESIS\n${hypothesis}\n\nPROTOCOL\n${protocol}\n\nOBSERVATION\n${observation}`;
-  };
+  }, [getRawContent, isLoading]);
 
   const handleRedact = (
     ref: React.RefObject<HTMLTextAreaElement | null>,
@@ -159,12 +153,12 @@ const ReviseEntry: React.FC = () => {
       const batch = writeBatch(db);
 
       const postRef = doc(db, 'archive', postId);
-      const gatedRef = doc(db, 'archive', postId, 'gated', 'content');
       const scholarRef = doc(db, 'scholars', uid);
 
       batch.update(postRef, {
         title,
         publicContent: parsed.publicContent,
+        redactedContent: parsed.redactedContent,
         wordCount: parsed.wordCount,
         status: 'pending',
         rejectionReason: null,
@@ -172,7 +166,6 @@ const ReviseEntry: React.FC = () => {
         submittedAt: serverTimestamp(),
       });
 
-      batch.set(gatedRef, { redactedContent: parsed.redactedContent });
       batch.update(scholarRef, { pendingPostId: postId });
 
       await batch.commit();

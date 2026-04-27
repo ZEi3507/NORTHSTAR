@@ -307,10 +307,15 @@ const ConductorDashboard: React.FC = () => {
                 <div className="flex justify-between items-end">
                   <div className="space-y-1">
                     <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Archive Sync</div>
-                    <div className="text-xl font-mono text-white">12%</div>
+                    <div className="text-xl font-mono text-white">
+                      {Math.min(100, (postCount / 5) * 100).toFixed(0)}%
+                    </div>
                   </div>
                   <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="w-[12%] h-full bg-mint shadow-[0_0_8px_rgba(43,222,172,0.5)]" />
+                    <div 
+                      className="h-full bg-mint shadow-[0_0_8px_rgba(43,222,172,0.5)] transition-all duration-1000" 
+                      style={{ width: `${Math.min(100, (postCount / 5) * 100)}%` }}
+                    />
                   </div>
                 </div>
               </div>

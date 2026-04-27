@@ -30,20 +30,6 @@ service cloud.firestore {
         (resource.data.authorId == request.auth.uid && resource.data.status != 'approved') || 
         request.auth.uid == 'SwbYjFnnW4Pu9o3GQDyfefxZsU42'
       );
-
-      // Sub-collection for gated content
-      match /gated/{docId} {
-        // Simplified write rule: Allow if the user is the author of the parent post or the admin
-        // We use the auth check to ensure security without needing a recursive get() during a batch create
-        allow write: if request.auth != null;
-        
-        // Strict read rule: Only Archivists, the Author, or the Admin can see the secret
-        allow read: if request.auth != null && (
-          get(/databases/$(database)/documents/scholars/$(request.auth.uid)).data.level >= 2 ||
-          get(/databases/$(database)/documents/archive/$(postId)).data.authorId == request.auth.uid ||
-          request.auth.uid == 'SwbYjFnnW4Pu9o3GQDyfefxZsU42'
-        );
-      }
     }
 
     match /connections/{connectionId} {

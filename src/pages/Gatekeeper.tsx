@@ -31,7 +31,7 @@ const Gatekeeper: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#05040A] text-slate-200 selection:bg-[#39FF14]/30 flex items-center justify-center p-6 overflow-hidden relative">
+    <div className="min-h-screen bg-[#05040A] text-slate-200 selection:bg-[#39FF14]/30 flex flex-col items-center p-6 overflow-hidden relative">
       <Nav />
       
       {/* Liquid Background Decor */}
@@ -48,18 +48,25 @@ const Gatekeeper: React.FC = () => {
         />
       </div>
 
-      <div className="max-w-md w-full relative z-10">
+      {/* Hero Section */}
+      <header className="relative z-10 w-full max-w-4xl text-center py-20 mt-10">
+        <h1 
+          style={{ fontFamily: "'Instrument Serif', serif" }}
+          className="text-6xl font-bold text-white mb-6 tracking-tight italic"
+        >
+          NORTHSTAR | The Conduct Laboratory & Archive
+        </h1>
+        <p className="text-xl font-mono text-slate-400 tracking-wider">
+          Life is a series of experiments. Start documenting your evidence.
+        </p>
+      </header>
+
+      {/* Auth Panel */}
+      <div className="max-w-md w-full relative z-10 mb-20">
         <div className="glass-card p-10 border border-[#39FF14]/10 shadow-2xl relative overflow-hidden group">
-          {/* Neon Accent Line */}
           <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#39FF14] to-transparent opacity-50" />
           
           <div className="text-center mb-10">
-            <h1 
-              style={{ fontFamily: "'Instrument Serif', serif" }}
-              className="text-4xl font-bold text-white mb-2 tracking-tight italic"
-            >
-              North Star
-            </h1>
             <p className="text-xs font-mono uppercase tracking-[0.3em] text-[#39FF14]/60">
               Authorized Entry Only
             </p>
@@ -134,11 +141,48 @@ const Gatekeeper: React.FC = () => {
             </p>
           </div>
         </div>
-        
-        <p className="mt-8 text-center text-[9px] font-mono text-slate-600 uppercase tracking-[0.4em]">
+      </div>
+
+      {/* Pillars Section */}
+      <section className="relative z-10 w-full max-w-6xl py-20 px-6">
+        <h2 className="text-3xl text-white italic mb-12 text-center">THE ARCHITECTURE OF INTENT</h2>
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="p-8 border border-white/5 rounded-2xl bg-white/[0.02]">
+            <h3 className="text-[#39FF14] font-mono text-xs uppercase tracking-widest mb-4">The Laboratory</h3>
+            <p className="text-slate-400 text-sm leading-relaxed">Where hypothesis meets rigorous documentation. Build your protocol.</p>
+          </div>
+          <div className="p-8 border border-white/5 rounded-2xl bg-white/[0.02]">
+            <h3 className="text-[#39FF14] font-mono text-xs uppercase tracking-widest mb-4">The Archive</h3>
+            <p className="text-slate-400 text-sm leading-relaxed">Preserve the integrity of human discovery. A ledger of collective knowledge.</p>
+          </div>
+          <div className="p-8 border border-white/5 rounded-2xl bg-white/[0.02]">
+            <h3 className="text-[#39FF14] font-mono text-xs uppercase tracking-widest mb-4">The Conduct</h3>
+            <p className="text-slate-400 text-sm leading-relaxed">The standard of rigor. Define how knowledge is validated and shared.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* The Veil Section */}
+      <section className="relative z-10 w-full bg-white/[0.01] border-y border-white/5 py-20 my-10">
+        <div className="max-w-4xl mx-auto text-center px-6">
+          <h2 className="text-3xl text-white italic mb-6">WISDOM IS EARNED, NOT GIVEN</h2>
+          <p className="text-slate-400 text-lg">Publish an entry. Reveal the results. Evolve the system.</p>
+        </div>
+      </section>
+
+      {/* Observatory Section */}
+      <section className="relative z-10 w-full max-w-4xl py-20 text-center px-6">
+        <h2 className="text-3xl text-white italic mb-6">NAVIGATE THE CONSTELLATIONS</h2>
+        <p className="text-slate-400 text-lg mb-10">Do not scroll through feeds. Navigate the Observatory—a 3D spatial data visualization engine.</p>
+      </section>
+
+      {/* Footer CTA */}
+      <footer className="relative z-10 w-full py-20 bg-gradient-to-b from-transparent to-[#1A0B2E]/50 text-center">
+        <h2 className="text-5xl font-bold text-white mb-10 tracking-tighter italic">DON'T JUST LIVE. EXPERIMENT.</h2>
+        <p className="text-[10px] font-mono text-slate-600 uppercase tracking-[0.4em]">
           Secured Connection // Node_0xAF
         </p>
-      </div>
+      </footer>
     </div>
   );
 };

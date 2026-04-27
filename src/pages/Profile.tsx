@@ -47,10 +47,10 @@ const Profile: React.FC = () => {
   const stats = getStats();
 
   return (
-    <div className="min-h-screen bg-[#0F0E0D] text-slate-200">
+    <div className="min-h-screen bg-void text-slate-200 selection:bg-accent/30">
       <Nav />
       <div className="pt-32 px-6 max-w-2xl mx-auto">
-        <div className="glass-card p-10 border border-white/10 rounded-[2px] relative overflow-hidden">
+        <div className="glass-card p-10 border border-white/10 rounded-[2px] relative overflow-hidden bg-void/40">
           <div className="absolute top-0 left-0 w-full h-1 bg-mint"></div>
           <div className="flex items-center gap-6 mb-8">
             <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center text-2xl font-bold border border-white/10">

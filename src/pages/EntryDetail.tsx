@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { collection, query, where, orderBy, limit, getDocs, doc, getDoc, increment, onSnapshot, writeBatch } from 'firebase/firestore';
 import { Star, ThumbsDown } from 'lucide-react';
-import { db } from '../lib/firebase';
+import { db, app } from '../lib/firebase';
 import { useConductorStore } from '../stores/conductorStore';
 import { TheVeil } from '../components/TheVeil';
 import Nav from '../components/Nav';
 import Loading from '../components/Loading';
 import { EchoButton } from '../components/ui/EchoButton';
+
+const functions = getFunctions(app);
+const getPostForUser = httpsCallable(functions, 'getPostForUser');
 
 interface PostResponse {
   id: string;
@@ -107,25 +111,8 @@ const EntryDetail: React.FC = () => {
       setError(null);
 
       try {
-        const postSnap = await getDoc(doc(db, 'archive', postId));
-        if (!postSnap.exists() || postSnap.data()?.status !== 'approved') {
-          setError('Authorized entry not found in active sectors.');
-          setLoading(false);
-          return;
-        }
-
-        const postData = { id: postSnap.id, ...postSnap.data() } as PostResponse;
-        
-        if (level >= 2) {
-          try {
-            const gatedSnap = await getDoc(doc(db, 'archive', postId, 'gated', 'content'));
-            if (gatedSnap.exists()) {
-              postData.redactedContent = gatedSnap.data().redactedContent;
-            }
-          } catch (err) {
-            console.warn("Gated segment decryption failed:", err);
-          }
-        }
+        const result = await getPostForUser({ postId });
+        const postData = result.data as PostResponse;
 
         setPost(postData);
 

@@ -137,8 +137,11 @@ const AdminReview: React.FC = () => {
 
       await batch.commit();
       
-      setConfirmation('Entry approved.');
-      setSelectedEntry(null);
+      const nextIndex = entries.findIndex(e => e.id === selectedEntry.id) + 1;
+      const nextEntry = entries[nextIndex] || entries[0] || null;
+      
+      setConfirmation(`Entry "${selectedEntry.title}" approved successfully.`);
+      setSelectedEntry(nextEntry && nextEntry.id !== selectedEntry.id ? nextEntry : null);
     } catch (err) {
       console.error('Approval failed:', err);
     } finally {
@@ -167,8 +170,11 @@ const AdminReview: React.FC = () => {
 
       await batch.commit();
 
-      setConfirmation('Entry returned for revision.');
-      setSelectedEntry(null);
+      const nextIndex = entries.findIndex(e => e.id === selectedEntry.id) + 1;
+      const nextEntry = entries[nextIndex] || entries[0] || null;
+
+      setConfirmation(`Entry "${selectedEntry.title}" returned for revision.`);
+      setSelectedEntry(nextEntry && nextEntry.id !== selectedEntry.id ? nextEntry : null);
       setRejectionReason('');
     } catch (err) {
       console.error('Rejection failed:', err);
@@ -277,17 +283,9 @@ const AdminReview: React.FC = () => {
               {entries.map((entry) => (
                 <div
                   key={entry.id}
-                  onClick={async () => {
+                  onClick={() => {
                     setConfirmation(null);
-                    // Fetch gated content before selecting
-                    try {
-                      const gatedSnap = await getDoc(doc(db, 'archive', entry.id, 'gated', 'content'));
-                      const redacted = gatedSnap.exists() ? gatedSnap.data().redactedContent : '';
-                      setSelectedEntry({ ...entry, redactedContent: redacted });
-                    } catch (err) {
-                      console.error("Failed to fetch gated content:", err);
-                      setSelectedEntry(entry);
-                    }
+                    setSelectedEntry(entry);
                   }}
                   className="p-4 cursor-pointer transition-colors"
                   style={{

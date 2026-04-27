@@ -152,12 +152,12 @@ export const getPostForUser = functions.https.onCall(async (data, context) => {
     wordCount: post.wordCount,
   };
 
-  // 5. Append redactedContent ONLY for Archivists (Level 2+)
-  if ((scholar.level || 1) >= 2) {
-    response.redactedContent = post.redactedContent;
-  }
+    // Return redactedContent ONLY if scholar is Lvl 2+ OR is the author
+    if ((scholar.level || 1) >= 2 || post.authorId === context.auth.uid) {
+      response.redactedContent = post.redactedContent;
+    }
 
-  return response;
+    return response;
 });
 
 /**
