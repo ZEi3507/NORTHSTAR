@@ -92,33 +92,40 @@ const SubmitEntry: React.FC = () => {
       const postRef = doc(collection(db, 'archive'));
       const scholarRef = doc(db, 'scholars', uid);
 
+      const isInstant = parsed.wordCount > 150;
       const postData = {
         authorId: uid,
         title,
         type,
         publicContent: parsed.publicContent,
         redactedContent: parsed.redactedContent,
-        status: 'pending',
+        status: isInstant ? 'approved' : 'pending',
         rejectionReason: null,
         revisionCount: 0,
         wordCount: parsed.wordCount,
         isFirstApprovedPost: postCount === 0,
         createdAt: serverTimestamp(),
         submittedAt: serverTimestamp(),
-        publishedAt: null,
+        publishedAt: isInstant ? serverTimestamp() : null,
       };
 
       const { writeBatch } = await import('firebase/firestore');
       const batch = writeBatch(db);
       
       batch.set(postRef, postData);
-      batch.update(scholarRef, { pendingPostId: postRef.id });
+      // Only set pendingPostId if NOT instant
+      if (!isInstant) {
+        batch.update(scholarRef, { pendingPostId: postRef.id });
+      }
 
       await batch.commit();
 
-      setConductor({ pendingPostId: postRef.id });
+      if (!isInstant) {
+        setConductor({ pendingPostId: postRef.id });
+      }
+
       navigate('/dashboard', {
-        state: { message: 'Entry submitted. Awaiting review.' },
+        state: { message: isInstant ? 'Entry published instantly.' : 'Entry submitted. Awaiting review.' },
       });
     } catch (err: any) {
       console.error('Submission failed:', err);

@@ -149,6 +149,7 @@ const ReviseEntry: React.FC = () => {
         return;
       }
 
+      const isInstant = parsed.wordCount > 150;
       const { writeBatch } = await import('firebase/firestore');
       const batch = writeBatch(db);
 
@@ -160,19 +161,20 @@ const ReviseEntry: React.FC = () => {
         publicContent: parsed.publicContent,
         redactedContent: parsed.redactedContent,
         wordCount: parsed.wordCount,
-        status: 'pending',
+        status: isInstant ? 'approved' : 'pending',
         rejectionReason: null,
         revisionCount: increment(1),
         submittedAt: serverTimestamp(),
+        publishedAt: isInstant ? serverTimestamp() : null,
       });
 
-      batch.update(scholarRef, { pendingPostId: postId });
+      batch.update(scholarRef, { pendingPostId: isInstant ? null : postId });
 
       await batch.commit();
 
-      setConductor({ pendingPostId: postId });
+      setConductor({ pendingPostId: isInstant ? null : postId });
       navigate('/dashboard', {
-        state: { message: 'Entry resubmitted. Awaiting review.' },
+        state: { message: isInstant ? 'Entry published instantly.' : 'Entry resubmitted. Awaiting review.' },
       });
     } catch (err: any) {
       console.error('Update failed:', err);

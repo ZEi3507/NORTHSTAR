@@ -172,7 +172,13 @@ const EntryDetail: React.FC = () => {
           console.error('Related sync error:', err);
         }
       } catch (err: any) {
-        console.error('Decryption error:', err);
+        console.error('EntryDetail: fetchPost failed');
+        console.error('Error details:', {
+          message: err.message,
+          code: err.code,
+          details: err.details,
+          stack: err.stack
+        });
         setError('Data corruption or unauthorized access attempt.');
       } finally {
         setLoading(false);
